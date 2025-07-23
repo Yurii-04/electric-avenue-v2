@@ -1,0 +1,15 @@
+{
+  "license": "MIT",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "lint:client": "cd client && npx lint-staged",
+    "lint:server": "cd server && npx lint-staged",
+    "lint:mobile": "cd mobile && npx lint-staged",
+    "test:server": "cd server && yarn run test --ci --passWithNoTests",
+    "test:client": "cd client && yarn run test --passWithNoTests",
+    "test:mobile": "cd mobile && yarn run test"
+  }
+}
