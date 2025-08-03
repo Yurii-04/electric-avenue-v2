@@ -1,5 +1,3 @@
-// @ts-check
-
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
@@ -7,19 +5,15 @@ import importPlugin from 'eslint-plugin-import';
 import globals from 'globals';
 
 export default tseslint.config(
-  // Global ignores
   {
     ignores: ['dist', 'node_modules', 'eslint.config.mjs'],
   },
 
-  // Base configs
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
 
-  // Prettier config
   eslintPluginPrettierRecommended,
 
-  // Main configuration for TS files
   {
     files: ['**/*.ts'],
     languageOptions: {
@@ -44,7 +38,6 @@ export default tseslint.config(
       },
     },
     rules: {
-      // Existing rules
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
@@ -54,7 +47,6 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-return': 'warn',
       '@typescript-eslint/require-await': 'warn',
 
-      // Import plugin rules
       'import/no-unresolved': 'error',
       'import/order': [
         'error',

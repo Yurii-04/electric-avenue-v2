@@ -146,3 +146,12 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 Now your server should be ready to run your Dockerized project with Nginx as a reverse proxy
+
+### 5. Add SSL sertificate
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx
+```
+- ### [Create Google Console](https://console.cloud.google.com/projectcreate)
+- ### [Instructions to create Oauth2 Client ID](https://medium.com/@flavtech/google-oauth2-authentication-with-nestjs-explained-ab585c53edec)
+- ### Fill .env files
