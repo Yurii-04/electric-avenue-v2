@@ -5,27 +5,24 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import { Response } from 'express';
 
 import { HashingService } from '~/hashing/hashing.service';
+import { JwtTokenService } from '~/jwt-token/jwt-token.service';
+import { Tokens } from '~/jwt-token/types/jwt-token.types';
 import { MailService } from '~/mail/mail.service';
 import { PrismaService } from '~/prisma/prisma.service';
 import { UserService } from '~/user/user.service';
 
 import { constants } from './consts/consts';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
-import { JwtPayload, Tokens } from './types/auth.types';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
+    private readonly jwtTokenService: JwtTokenService,
     private readonly hashingService: HashingService,
-    private readonly configService: ConfigService,
     private readonly mailService: MailService,
   ) {}
 
@@ -63,7 +60,10 @@ export class AuthService {
       throw new ForbiddenException('Wrong email or password');
     }
 
-    const tokens = await this.getTokens(user.id, user.email);
+    const tokens = await this.jwtTokenService.signTokens({
+      email: user.email,
+      sub: user.id,
+    });
     await this.updateRt(user.id, tokens.refreshToken);
     return { tokens, userId: user.id };
   }
@@ -81,29 +81,6 @@ export class AuthService {
     return randomBytes(32).toString('hex');
   }
 
-  async getTokens(userId: string, email: string) {
-    const jwtPayload: JwtPayload = {
-      sub: userId,
-      email,
-    };
-
-    const [at, rt] = await Promise.all([
-      this.jwtService.signAsync(jwtPayload, {
-        secret: this.configService.get<string>('AT_SECRET'),
-        expiresIn: constants.EXPIRE_MINUTES_ACCESS_TOKEN + 'm',
-      }),
-      this.jwtService.signAsync(jwtPayload, {
-        secret: this.configService.get<string>('RT_SECRET'),
-        expiresIn: constants.EXPIRE_DAY_REFRESH_TOKEN + 'd',
-      }),
-    ]);
-
-    return {
-      accessToken: at,
-      refreshToken: rt,
-    };
-  }
-
   async refreshTokens(userId: string, rt: string): Promise<Tokens> {
     const user = await this.userService.findById(userId);
     if (!user?.hashedRt) {
@@ -115,9 +92,12 @@ export class AuthService {
       throw new ForbiddenException();
     }
 
-    const tokens = await this.getTokens(user.id, user.email);
-    await this.updateRt(user.id, tokens.refreshToken);
+    const tokens = await this.jwtTokenService.signTokens({
+      email: user.email,
+      sub: user.id,
+    });
 
+    await this.updateRt(user.id, tokens.refreshToken);
     return tokens;
   }
 
@@ -129,30 +109,6 @@ export class AuthService {
       },
       data: { hashedRt },
     });
-  }
-
-  addTokensToCookies(res: Response, at: string, rt: string) {
-    res.cookie(constants.ACCESS_TOKEN_NAME, at, {
-      ...this.getCookieOptions(),
-      maxAge: constants.EXPIRE_MINUTES_ACCESS_TOKEN * 60 * 1000,
-    });
-    res.cookie(constants.REFRESH_TOKEN_NAME, rt, {
-      ...this.getCookieOptions(),
-      maxAge: constants.EXPIRE_DAY_REFRESH_TOKEN * 24 * 60 * 60 * 1000,
-    });
-  }
-
-  removeTokensFromResponse(res: Response) {
-    res.clearCookie(constants.REFRESH_TOKEN_NAME, this.getCookieOptions());
-    res.clearCookie(constants.ACCESS_TOKEN_NAME, this.getCookieOptions());
-  }
-
-  private getCookieOptions() {
-    return {
-      httpOnly: true,
-      sameSite: 'strict' as const,
-      secure: process.env.NODE_ENV === 'prod',
-    };
   }
 
   async confirm(token: string) {
@@ -184,5 +140,30 @@ export class AuthService {
     });
 
     return { message: 'User confirmed successfully' };
+  }
+
+  async resendConfirmation(email: string) {
+    const user = await this.userService.findByEmail(email);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    if (user.confirmed) {
+      throw new BadRequestException('User already confirmed');
+    }
+
+    const verificationToken = this.generateVerificationToken();
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationToken,
+        verificationTokenExpiresAt: constants.verificationTokenExpiresAt,
+      },
+    });
+
+    await this.mailService.sendConfirmationEmail(user.email, verificationToken);
+
+    return { message: 'Confirmation email sent successfully' };
   }
 }

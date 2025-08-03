@@ -5,7 +5,9 @@ import { APP_GUARD } from '@nestjs/core';
 import { AtGuard } from '~/common/guards/at.guard';
 
 import { AuthModule } from './auth/auth.module';
+import { AuthCookiesModule } from './auth-cookies/auth-cookies.module';
 import { HashingModule } from './hashing/hashing.module';
+import { JwtTokenModule } from './jwt-token/jwt-token.module';
 import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
@@ -20,6 +22,8 @@ import { UserModule } from './user/user.module';
     AuthModule,
     HashingModule,
     MailModule,
+    JwtTokenModule,
+    AuthCookiesModule,
   ],
   providers: [
     {

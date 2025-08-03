@@ -21,6 +21,7 @@ import {
 import { Response } from 'express';
 
 import { IRequestWithCookies } from '~/auth/types/auth.types';
+import { AuthCookiesService } from '~/auth-cookies/auth-cookies.service';
 import { GetCurrentUserId } from '~/common/decorators/get-user-id.decorator';
 import { Public } from '~/common/decorators/public.decorator';
 import { RtGuard } from '~/common/guards/rt.guard';
@@ -35,7 +36,10 @@ import {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly authCookiesService: AuthCookiesService,
+  ) {}
 
   @Public()
   @ApiBody({ type: RegisterDto })
@@ -56,11 +60,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ userId: string }> {
     const { tokens, userId } = await this.authService.login(dto);
-    this.authService.addTokensToCookies(
-      res,
-      tokens.accessToken,
-      tokens.refreshToken,
-    );
+    this.authCookiesService.addTokensToCookies(res, tokens);
     return { userId };
   }
 
@@ -73,7 +73,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<boolean> {
     const result = await this.authService.logout(userId);
-    this.authService.removeTokensFromResponse(response);
+    this.authCookiesService.removeTokensFromResponse(response);
     return result;
   }
 
@@ -91,11 +91,13 @@ export class AuthController {
     if (!refreshTokenFromCookies) {
       throw new BadRequestException('Refresh token missed');
     }
-    const { accessToken, refreshToken } = await this.authService.refreshTokens(
+
+    const tokens = await this.authService.refreshTokens(
       userId,
       refreshTokenFromCookies,
     );
-    this.authService.addTokensToCookies(res, accessToken, refreshToken);
+
+    this.authCookiesService.addTokensToCookies(res, tokens);
   }
 
   @Public()
@@ -108,5 +110,11 @@ export class AuthController {
     }
 
     return this.authService.confirm(token);
+  }
+
+  @Public()
+  @Get('/resend-confirmation')
+  async resendConfirmation() {
+    return this.authService.resendConfirmation('');
   }
 }
