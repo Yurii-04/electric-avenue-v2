@@ -1,20 +1,18 @@
 import { randomBytes } from 'crypto';
-
 import {
   BadRequestException,
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-
+import { GoogleProfile } from '~/auth/types/auth.types';
 import { HashingService } from '~/hashing/hashing.service';
 import { JwtTokenService } from '~/jwt-token/jwt-token.service';
 import { Tokens } from '~/jwt-token/types/jwt-token.types';
 import { MailService } from '~/mail/mail.service';
 import { PrismaService } from '~/prisma/prisma.service';
 import { UserService } from '~/user/user.service';
-
 import { constants } from './consts/consts';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { GoogleAuthDto, LoginDto, RegisterDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -42,9 +40,9 @@ export class AuthService {
     return user.id;
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto): Promise<Tokens> {
     const user = await this.userService.findByEmail(dto.email);
-    if (!user) {
+    if (!user || !user.hashedPassword) {
       throw new ForbiddenException('Wrong email or password');
     }
 
@@ -65,7 +63,42 @@ export class AuthService {
       sub: user.id,
     });
     await this.updateRt(user.id, tokens.refreshToken);
-    return { tokens, userId: user.id };
+    return tokens;
+  }
+
+  async googleAuth(googleProfile: GoogleProfile): Promise<Tokens> {
+    let user = await this.prisma.user.findUnique({
+      where: { googleId: googleProfile.id },
+    });
+
+    if (!user) {
+      user = await this.userService.findByEmail(googleProfile.email);
+
+      if (user) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { googleId: googleProfile.id },
+        });
+      } else {
+        const googleAuthDto: GoogleAuthDto = {
+          email: googleProfile.email,
+          firstName: googleProfile.firstName,
+          lastName: googleProfile.lastName,
+          googleId: googleProfile.id,
+          picture: googleProfile.picture,
+        };
+
+        user = await this.userService.saveGoogleUser(googleAuthDto);
+      }
+    }
+
+    const tokens = await this.jwtTokenService.signTokens({
+      email: user.email,
+      sub: user.id,
+    });
+
+    await this.updateRt(user.id, tokens.refreshToken);
+    return tokens;
   }
 
   async logout(userId: string) {

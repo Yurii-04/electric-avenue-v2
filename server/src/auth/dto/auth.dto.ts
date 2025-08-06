@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Length,
+} from 'class-validator';
 
 export class RegisterDto {
   @ApiProperty({ example: 'test@example.com' })
@@ -34,6 +40,32 @@ export class LoginDto {
   password: string;
 }
 
+export class GoogleAuthDto {
+  @ApiProperty({ example: 'test@example.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: 'Yura' })
+  @IsString()
+  @IsNotEmpty()
+  firstName: string;
+
+  @ApiProperty({ example: 'TestSurname' })
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @IsNotEmpty()
+  googleId: string;
+
+  @ApiProperty({ example: null })
+  @IsOptional()
+  @IsString()
+  picture?: string;
+}
+
 export class UserIdResponseDto {
   @ApiProperty({
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -41,9 +73,8 @@ export class UserIdResponseDto {
   userId: string;
 }
 
-export class EmailConfirmationResponseDto {
-  @ApiProperty({
-    example: 'User confirmed successfully',
-  })
-  message: string;
+export class ResendConfirmationDto {
+  @ApiProperty({ example: 'test@example.com' })
+  @IsEmail()
+  email: string;
 }

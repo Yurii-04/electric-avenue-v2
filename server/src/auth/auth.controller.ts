@@ -16,24 +16,32 @@ import {
   ApiCookieAuth,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Response } from 'express';
-
-import { IRequestWithCookies } from '~/auth/types/auth.types';
+import {
+  GoogleAuthRequest,
+  IRequestWithCookies,
+} from '~/auth/types/auth.types';
 import { AuthCookiesService } from '~/auth-cookies/auth-cookies.service';
 import { GetCurrentUserId } from '~/common/decorators/get-user-id.decorator';
 import { Public } from '~/common/decorators/public.decorator';
+import { GoogleGuard } from '~/common/guards/google.guard';
 import { RtGuard } from '~/common/guards/rt.guard';
-
+import { TokensDto } from '~/jwt-token/dto/jwt-token.dto';
+import { Tokens } from '~/jwt-token/types/jwt-token.types';
 import { AuthService } from './auth.service';
 import {
-  EmailConfirmationResponseDto,
   LoginDto,
   RegisterDto,
+  ResendConfirmationDto,
   UserIdResponseDto,
 } from './dto/auth.dto';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -53,21 +61,42 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiBody({ type: LoginDto })
-  @ApiOkResponse({ type: UserIdResponseDto })
+  @ApiOkResponse({ type: TokensDto })
   @Post('/login')
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ userId: string }> {
-    const { tokens, userId } = await this.authService.login(dto);
+  ): Promise<Tokens> {
+    const tokens = await this.authService.login(dto);
     this.authCookiesService.addTokensToCookies(res, tokens);
-    return { userId };
+    return tokens;
+  }
+
+  @Public()
+  @UseGuards(GoogleGuard)
+  @ApiOperation({ summary: 'OAuth2 login by Google (redirect)' })
+  @ApiResponse({ status: 302, description: 'Redirect to Google' })
+  @Get('google')
+  async googleAuth() {}
+
+  @Public()
+  @UseGuards(GoogleGuard)
+  @ApiOperation({ summary: 'Handling redirect after google login' })
+  @ApiOkResponse({ type: TokensDto })
+  @Get('/google/callback')
+  async googleAuthCallback(
+    @Req() req: GoogleAuthRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<Tokens> {
+    const tokens = await this.authService.googleAuth(req.user);
+    this.authCookiesService.addTokensToCookies(res, tokens);
+    return tokens;
   }
 
   @Post('/logout')
   @HttpCode(HttpStatus.OK)
   @ApiCookieAuth()
-  @ApiOkResponse({ example: true })
+  @ApiOkResponse({ schema: { example: true } })
   async logout(
     @GetCurrentUserId() userId: string,
     @Res({ passthrough: true }) response: Response,
@@ -81,40 +110,48 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(RtGuard)
   @ApiCookieAuth()
+  @ApiOkResponse({ type: TokensDto })
   @Post('/refresh')
   async refresh(
     @GetCurrentUserId() userId: string,
     @Req() req: IRequestWithCookies,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<Tokens> {
     const { refreshToken: refreshTokenFromCookies } = req.cookies;
     if (!refreshTokenFromCookies) {
       throw new BadRequestException('Refresh token missed');
     }
-
     const tokens = await this.authService.refreshTokens(
       userId,
       refreshTokenFromCookies,
     );
 
     this.authCookiesService.addTokensToCookies(res, tokens);
+    return tokens;
   }
 
   @Public()
   @ApiQuery({ name: 'token', required: true, type: String })
-  @ApiOkResponse({ type: EmailConfirmationResponseDto })
+  @ApiOkResponse({
+    schema: { example: { message: 'User confirmed successfully' } },
+  })
   @Get('/confirm')
-  async confirm(@Query('token') token: string) {
+  async confirm(@Query('token') token: string): Promise<{ message: string }> {
     if (!token) {
       throw new BadRequestException('Token is required');
     }
-
     return this.authService.confirm(token);
   }
 
   @Public()
-  @Get('/resend-confirmation')
-  async resendConfirmation() {
-    return this.authService.resendConfirmation('');
+  @ApiBody({ type: ResendConfirmationDto })
+  @ApiOkResponse({
+    schema: { example: { message: 'Confirmation email sent successfully' } },
+  })
+  @Post('/resend-confirmation')
+  async resendConfirmation(
+    @Body() dto: ResendConfirmationDto,
+  ): Promise<{ message: string }> {
+    return this.authService.resendConfirmation(dto.email);
   }
 }

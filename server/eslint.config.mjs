@@ -51,7 +51,7 @@ export default tseslint.config(
       'import/order': [
         'error',
         {
-          'newlines-between': 'always',
+          'newlines-between': 'never',
           alphabetize: {
             order: 'asc',
             caseInsensitive: true,

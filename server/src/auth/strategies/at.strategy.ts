@@ -1,8 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy } from 'passport-jwt';
-
+import { ExtractJwt, Strategy } from 'passport-jwt';
 import { IRequestWithCookies } from '~/auth/types/auth.types';
 import { JwtPayload } from '~/jwt-token/types/jwt-token.types';
 
@@ -15,26 +14,31 @@ export class AtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     super({
-      jwtFromRequest: AtStrategy.extractJwtFromCookies,
+      jwtFromRequest: AtStrategy.extractJwt,
       secretOrKey: atSecret,
       passReqToCallback: true,
     });
   }
 
-  private static extractJwtFromCookies(
+  private static extractJwt(
     this: void,
     req: IRequestWithCookies,
   ): string | null {
-    const accessToken = req.cookies?.accessToken;
-    if (!accessToken) {
-      throw new ForbiddenException('Access token not found in cookies');
+    const cookieToken = req.cookies?.accessToken;
+    if (cookieToken) {
+      return cookieToken;
     }
 
-    return accessToken;
+    const bearerToken = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+    if (bearerToken) {
+      return bearerToken;
+    }
+
+    throw new ForbiddenException('Access token not found');
   }
 
   validate(req: IRequestWithCookies, payload: JwtPayload) {
-    const accessToken = req.cookies.accessToken;
+    const accessToken = AtStrategy.extractJwt(req);
 
     return {
       sub: payload.sub,

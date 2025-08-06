@@ -1,9 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { User } from '@prisma/client';
 
-export class UserResponseDto
-  implements Omit<User, 'hashedRt' | 'hashedPassword'>
-{
+export class UserResponseDto {
   @ApiProperty()
   id: string;
 

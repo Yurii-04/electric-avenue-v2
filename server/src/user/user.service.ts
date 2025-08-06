@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { User } from '@prisma/client';
-
-import { RegisterDto } from '~/auth/dto/auth.dto';
+import { GoogleAuthDto, RegisterDto } from '~/auth/dto/auth.dto';
 import { HashingService } from '~/hashing/hashing.service';
 import { PrismaService } from '~/prisma/prisma.service';
-
 import { UserResponseDto } from './dto/user.dto';
 
 type Verification = {
@@ -31,6 +29,19 @@ export class UserService {
         verificationToken,
         verificationTokenExpiresAt,
         confirmed: false,
+      },
+    });
+  }
+
+  async saveGoogleUser(dto: GoogleAuthDto): Promise<User> {
+    return this.prisma.user.create({
+      data: {
+        email: dto.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        googleId: dto.googleId,
+        photo: dto.picture,
+        confirmed: true,
       },
     });
   }

@@ -2,7 +2,6 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-jwt';
-
 import { IRequestWithCookies } from '~/auth/types/auth.types';
 import { JwtPayload } from '~/jwt-token/types/jwt-token.types';
 
@@ -15,26 +14,31 @@ export class RtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
     }
 
     super({
-      jwtFromRequest: RtStrategy.extractJwtFromCookies,
+      jwtFromRequest: RtStrategy.extractJwt,
       secretOrKey: rtSecret,
       passReqToCallback: true,
     });
   }
 
-  private static extractJwtFromCookies(
+  private static extractJwt(
     this: void,
     req: IRequestWithCookies,
   ): string | null {
-    const refreshToken = req.cookies?.refreshToken;
-    if (!refreshToken) {
-      throw new ForbiddenException('Refresh token not found in cookies');
+    const cookieToken = req.cookies?.refreshToken;
+    if (cookieToken) {
+      return cookieToken;
     }
 
-    return refreshToken;
+    const headerToken = req.headers['x-refresh-token'] as string;
+    if (headerToken) {
+      return headerToken;
+    }
+
+    throw new ForbiddenException('Refresh token not found');
   }
 
   validate(req: IRequestWithCookies, payload: JwtPayload) {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = RtStrategy.extractJwt(req);
 
     return {
       sub: payload.sub,
