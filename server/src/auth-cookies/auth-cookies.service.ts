@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { Response } from 'express';
-
 import { constants } from '~/jwt-token/consts';
 import { Tokens } from '~/jwt-token/types/jwt-token.types';
 

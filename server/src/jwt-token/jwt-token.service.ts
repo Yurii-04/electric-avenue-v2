@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-
 import { constants } from './consts';
 import { JwtPayload, Tokens } from './types/jwt-token.types';
 

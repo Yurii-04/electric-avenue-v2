@@ -50,7 +50,6 @@ export class AuthController {
   ) {}
 
   @Public()
-  @ApiBody({ type: RegisterDto })
   @ApiCreatedResponse({ type: UserIdResponseDto })
   @Post('/register')
   async register(@Body() dto: RegisterDto): Promise<{ userId: string }> {
@@ -60,7 +59,6 @@ export class AuthController {
 
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiBody({ type: LoginDto })
   @ApiOkResponse({ type: TokensDto })
   @Post('/login')
   async login(

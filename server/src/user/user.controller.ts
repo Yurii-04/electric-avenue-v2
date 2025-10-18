@@ -1,8 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiNotFoundResponse, ApiResponse } from '@nestjs/swagger';
-
 import { GetCurrentUserId } from '~/common/decorators/get-user-id.decorator';
-
 import { UserResponseDto } from './dto/user.dto';
 import { UserService } from './user.service';
 

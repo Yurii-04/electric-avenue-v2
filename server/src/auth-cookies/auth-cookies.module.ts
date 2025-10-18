@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-
 import { AuthCookiesService } from './auth-cookies.service';
 
 @Module({

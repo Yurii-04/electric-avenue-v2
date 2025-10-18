@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
@@ -28,17 +27,17 @@ export class MailService {
       currentYear: new Date().getFullYear().toString(),
     });
 
-    try {
-      await this.transporter.sendMail({
+    await this.transporter
+      .sendMail({
         from: `"Support" <${this.configService.get('SMTP_USER')}>`,
         to,
         subject: 'Confirm your account',
         html,
+      })
+      .catch((err) => {
+        console.error('Failed to send confirmation email:', err);
+        throw new InternalServerErrorException('Failed to send email');
       });
-    } catch (err) {
-      console.error('Failed to send confirmation email:', err);
-      throw new InternalServerErrorException('Failed to send email');
-    }
   }
 
   private renderTemplate(
